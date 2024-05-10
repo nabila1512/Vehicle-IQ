@@ -1,0 +1,51 @@
+### Vibration sensor, MPU-6050 with the buzzer code
+
+
+#include <Wire.h>
+#include <MPU6050.h>
+
+MPU6050 mpu;
+
+const int vibrationPin = A0;    // Analog pin connected to the vibration sensor
+const int buzzerPin = 9;        // Pin to which the buzzer is connected
+const int thresholdVibration = 500; // Threshold value for detecting vibration
+const int thresholdAcc = 2000;  // Threshold value for detecting an accident (acceleration magnitude)
+
+void setup() {
+  Serial.begin(9600);
+  Wire.begin();
+  mpu.initialize();
+  pinMode(buzzerPin, OUTPUT);   // Set buzzer pin as output
+}
+
+void loop() {
+  // Read vibration sensor value
+  int vibrationValue = analogRead(vibrationPin);
+  Serial.print("Vibration Value: ");
+  Serial.println(vibrationValue);
+
+  // Read accelerometer data
+  int16_t ax, ay, az;
+  mpu.getAcceleration(&ax, &ay, &az);
+  
+  // Calculate total acceleration magnitude
+  int16_t accMagnitude = sqrt(ax * ax + ay * ay + az * az);
+  Serial.print("Acceleration Magnitude: ");
+  Serial.println(accMagnitude);
+
+  // Check for vibration
+  if (vibrationValue > thresholdVibration) {
+    Serial.println("Vibration detected");
+  }
+
+  // Check for accident (acceleration magnitude exceeding threshold)
+  if (accMagnitude > thresholdAcc) {
+    Serial.println("Accident detected");
+    // Activate buzzer
+    tone(buzzerPin, 1000);  // Turn on the buzzer at 1000 Hz frequency
+    delay(1000);            // Wait for 1 second
+    noTone(buzzerPin);      // Turn off the buzzer
+  }
+
+  delay(1000); // Adjust delay as needed
+}
