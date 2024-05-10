@@ -1,0 +1,27 @@
+###  GPS 
+
+#include <NeoSWSerial.h>  // SoftwareSerial library for Neo-6M GPS module
+#include <NMEAGPS.h>      // NeoGPS library for parsing GPS data
+
+NeoSWSerial gpsSerial(10, 11);  // RX, TX for GPS module
+NMEAGPS gps;
+gps_fix fix;
+
+void setup() {
+  Serial.begin(9600);
+  gpsSerial.begin(9600);
+}
+
+void loop() {
+  while (gps.available(gpsSerial)) {
+    fix = gps.read();
+    if (fix.valid.location) {
+      float latitude = fix.latitude();
+      float longitude = fix.longitude();
+      Serial.print("Latitude: ");
+      Serial.println(latitude, 6); // Print latitude with 6 decimal places
+      Serial.print("Longitude: ");
+      Serial.println(longitude, 6); // Print longitude with 6 decimal places
+    }
+  }
+}
