@@ -1,0 +1,55 @@
+### GPS and GSM with buzzer
+
+
+#include <NeoSWSerial.h>      // SoftwareSerial library for Neo-6M GPS module
+#include <NMEAGPS.h>          // NeoGPS library for parsing GPS data
+#include <SoftwareSerial.h>   // SoftwareSerial library for SIM900A GSM module
+
+NeoSWSerial gpsSerial(10, 11);   // RX, TX for Neo-6M GPS module
+SoftwareSerial gsmSerial(7, 8);   // RX, TX for SIM900A GSM module
+
+const int buzzerPin = 9;         // Pin to which the buzzer is connected
+
+NMEAGPS gps;
+gps_fix fix;
+
+void setup() {
+  Serial.begin(9600);
+  gpsSerial.begin(9600);
+  gsmSerial.begin(9600);
+  pinMode(buzzerPin, OUTPUT);   // Set buzzer pin as output
+  // Initialize GSM module
+  delay(2000);
+  gsmSerial.println("AT"); // Check if the module is ready
+  delay(1000);
+  while (gsmSerial.available()) {
+    Serial.write(gsmSerial.read());
+  }
+}
+
+void loop() {
+  while (gps.available(gpsSerial)) {
+    fix = gps.read();
+    if (fix.valid.location) {
+      float latitude = fix.latitude();
+      float longitude = fix.longitude();
+      
+      // Send GPS location via GSM
+      sendSMS("Latitude: " + String(latitude, 6) + ", Longitude: " + String(longitude, 6));
+      
+      // Activate buzzer
+      tone(buzzerPin, 1000);  // Turn on the buzzer at 1000 Hz frequency
+      delay(1000);            // Wait for 1 second
+      noTone(buzzerPin);      // Turn off the buzzer
+    }
+  }
+}
+
+void sendSMS(String message) {
+  gsmSerial.println("AT+CMGF=1"); // Set SMS mode to text
+  delay(1000);
+  gsmSerial.print("AT+CMGS=\"PHONE_NUMBER\""); // Replace PHONE_NUMBER with recipient's number
+  gsmSerial.println(message);
+  gsmSerial.println((char)26); // End of message
+  delay(5000); // Wait for SMS to send
+}
