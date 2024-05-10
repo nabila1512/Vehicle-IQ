@@ -1,0 +1,54 @@
+###  MPU-6050
+
+
+#include <Wire.h>
+#include <MPU6050.h>
+
+MPU6050 mpu;
+
+const int threshold = 2000; // Threshold value for detecting an accident
+
+void setup() {
+  Serial.begin(9600);
+  Wire.begin();
+  mpu.initialize();
+}
+
+void loop() {
+  int16_t ax, ay, az;
+  int16_t gx, gy, gz;
+
+  mpu.getMotion6(&ax, &ay, &az, &gx, &gy, &gz);
+
+  // Calculate total acceleration magnitude
+  int16_t accMagnitude = sqrt(ax * ax + ay * ay + az * az);
+
+  // Print accelerometer values
+  Serial.print("Acceleration (mg): ");
+  Serial.print(ax);
+  Serial.print(", ");
+  Serial.print(ay);
+  Serial.print(", ");
+  Serial.print(az);
+  Serial.println();
+
+  // Print gyroscope values
+  Serial.print("Gyroscope (deg/s): ");
+  Serial.print(gx);
+  Serial.print(", ");
+  Serial.print(gy);
+  Serial.print(", ");
+  Serial.print(gz);
+  Serial.println();
+
+  // Print total acceleration magnitude
+  Serial.print("Acceleration Magnitude (mg): ");
+  Serial.println(accMagnitude);
+
+  // Check if acceleration magnitude exceeds threshold
+  if (accMagnitude > threshold) {
+    Serial.println("Accident detected");
+  }
+
+  delay(1000); // Adjust delay as needed
+}
