@@ -1,8 +1,4 @@
-### VIBRATION SENSOR
-
-
-const int vibrationPin = A0;    // Analog pin connected to the vibration sensor
-const int threshold = 500;      // Threshold value for detecting an accident
+const int vibrationPin = A0;  // Analog pin connected to the vibration sensor
 
 void setup() {
   Serial.begin(9600);  // Initialize serial communication
@@ -10,11 +6,6 @@ void setup() {
 
 void loop() {
   int vibrationValue = analogRead(vibrationPin);  // Read the analog value from the vibration sensor
-  
-  if (vibrationValue > threshold) {
-    Serial.println("Accident detected");  // Print "Accident detected" if the vibration value crosses the threshold
-  }
-  
   Serial.print("Vibration Value: ");
   Serial.println(vibrationValue);  // Print the value to the serial monitor
   delay(1000);  // Delay for 1 second (adjust as needed)
