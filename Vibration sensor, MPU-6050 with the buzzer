@@ -1,51 +1,107 @@
-### Vibration sensor, MPU-6050 with the buzzer code
-
-
 #include <Wire.h>
-#include <MPU6050.h>
 
-MPU6050 mpu;
+#define MPU6050_ADDRESS 0x68 // MPU-6050 I2C address
+const int vibrationPin = A0;  // Analog pin connected to the vibration sensor
+const int buttonPin = 3;      // Button connected to digital pin 2
+const int buzzerPin = 2;      // Buzzer connected to digital pin 3
 
-const int vibrationPin = A0;    // Analog pin connected to the vibration sensor
-const int buzzerPin = 9;        // Pin to which the buzzer is connected
-const int thresholdVibration = 500; // Threshold value for detecting vibration
-const int thresholdAcc = 2000;  // Threshold value for detecting an accident (acceleration magnitude)
+// Threshold values
+const float accelThreshold = 2.1;
+const int vibrationThreshold = 900;
+
+float magnitude(float x, float y, float z) {
+  return sqrt(x * x + y * y + z * z);
+}
 
 void setup() {
   Serial.begin(9600);
   Wire.begin();
-  mpu.initialize();
-  pinMode(buzzerPin, OUTPUT);   // Set buzzer pin as output
+
+  // Initialize MPU-6050
+  Wire.beginTransmission(MPU6050_ADDRESS);
+  Wire.write(0x6B); // PWR_MGMT_1 register
+  Wire.write(0);    // Set to zero (wakes up the MPU-6050)
+  Wire.endTransmission(true);
+
+  // Initialize button and buzzer pins
+  pinMode(buttonPin, INPUT_PULLUP);  // Initialize button pin as input with internal pull-up resistor
+  pinMode(buzzerPin, OUTPUT);        // Initialize buzzer pin as output
+  digitalWrite(buzzerPin, LOW);      // Ensure buzzer is off initially
 }
 
 void loop() {
-  // Read vibration sensor value
-  int vibrationValue = analogRead(vibrationPin);
+  int16_t ax, ay, az;
+  int16_t gx, gy, gz;
+
+  // Read accelerometer data
+  Wire.beginTransmission(MPU6050_ADDRESS);
+  Wire.write(0x3B); // Starting register address for accelerometer data
+  Wire.endTransmission(false);
+  Wire.requestFrom(MPU6050_ADDRESS, 6, true); // Request 6 bytes of data
+  ax = Wire.read() << 8 | Wire.read(); // Combine high byte and low byte
+  ay = Wire.read() << 8 | Wire.read();
+  az = Wire.read() << 8 | Wire.read();
+
+  // Read gyroscope data
+  Wire.beginTransmission(MPU6050_ADDRESS);
+  Wire.write(0x43); // Starting register address for gyroscope data
+  Wire.endTransmission(false);
+  Wire.requestFrom(MPU6050_ADDRESS, 6, true); // Request 6 bytes of data
+  gx = Wire.read() << 8 | Wire.read(); // Combine high byte and low byte
+  gy = Wire.read() << 8 | Wire.read();
+  gz = Wire.read() << 8 | Wire.read();
+
+  // Calculate acceleration in g (gravity) units
+  float accelX = ax / 16384.0;
+  float accelY = ay / 16384.0;
+  float accelZ = az / 16384.0;
+
+  // Calculate magnitude of acceleration
+  float accMagnitude = magnitude(accelX, accelY, accelZ);
+
+  // Calculate gyroscope values in degrees per second (dps)
+  float gyroX = gx / 131.0;
+  float gyroY = gy / 131.0;
+  float gyroZ = gz / 131.0;
+
+  // Calculate magnitude of gyroscope readings
+  float gyroMagnitude = magnitude(gyroX, gyroY, gyroZ);
+
+  // Read vibration sensor data
+  int vibrationValue = analogRead(vibrationPin);  // Read the analog value from the vibration sensor
+
+  // Check if the calculated acceleration magnitude or vibration value exceeds the threshold
+  if (accMagnitude > accelThreshold || vibrationValue > vibrationThreshold) {
+    Serial.println("Accident Detected");
+    digitalWrite(buzzerPin, HIGH);  // Turn on the buzzer
+    
+    unsigned long startTime = millis();
+    while (millis() - startTime < 15000) {  // Loop for 15 seconds
+      if (digitalRead(buttonPin) == LOW) {  // If the button is pressed, break the loop
+        Serial.println("Button Pressed. Resuming readings.");
+        break;
+      }
+    }
+    
+    digitalWrite(buzzerPin, LOW);   // Turn off the buzzer
+    return;  // Skip the rest of the loop and start fresh
+  }
+
+  // Print calculated values if no accident is detected
+  Serial.print("Acceleration (g): ");
+  Serial.println(accMagnitude);
+
+  Serial.print("Gyroscope (dps): ");
+  Serial.print(gyroX);
+  Serial.print(", ");
+  Serial.print(gyroY);
+  Serial.print(", ");
+  Serial.print(gyroZ);
+  Serial.print(", Magnitude: ");
+  Serial.println(gyroMagnitude);
+
   Serial.print("Vibration Value: ");
   Serial.println(vibrationValue);
 
-  // Read accelerometer data
-  int16_t ax, ay, az;
-  mpu.getAcceleration(&ax, &ay, &az);
-  
-  // Calculate total acceleration magnitude
-  int16_t accMagnitude = sqrt(ax * ax + ay * ay + az * az);
-  Serial.print("Acceleration Magnitude: ");
-  Serial.println(accMagnitude);
-
-  // Check for vibration
-  if (vibrationValue > thresholdVibration) {
-    Serial.println("Vibration detected");
-  }
-
-  // Check for accident (acceleration magnitude exceeding threshold)
-  if (accMagnitude > thresholdAcc) {
-    Serial.println("Accident detected");
-    // Activate buzzer
-    tone(buzzerPin, 1000);  // Turn on the buzzer at 1000 Hz frequency
-    delay(1000);            // Wait for 1 second
-    noTone(buzzerPin);      // Turn off the buzzer
-  }
-
-  delay(1000); // Adjust delay as needed
+  delay(1); // Adjust delay as needed
 }
